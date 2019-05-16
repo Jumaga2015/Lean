@@ -259,3 +259,8 @@ QuantConnectProjects.xml
 Launcher/Plugins/*
 /ApiPython/dist
 /ApiPython/quantconnect.egg-info
+/Algorithm.CSharp/BasicPythonIntegrationTemplateAlgorithm.cs
+/Algorithm.Python/BasicCSharpIntegrationTemplateAlgorithm.py
+/Common/Interfaces/IBusyCollection.cs
+/Common/Interfaces/IDownloadProvider.cs
+/Common/Util/BusyCollection.cs
