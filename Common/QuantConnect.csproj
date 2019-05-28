@@ -230,6 +230,8 @@
     <Compile Include="Indicators\IIndicatorWarmUpPeriodProvider.cs" />
     <Compile Include="Interfaces\IAccountCurrencyProvider.cs" />
     <Compile Include="Interfaces\IAlgorithmSubscriptionManager.cs" />
+    <Compile Include="Interfaces\IBusyCollection.cs" />
+    <Compile Include="Interfaces\IDownloadProvider.cs" />
     <Compile Include="Interfaces\IHistoryProvider.cs" />
     <Compile Include="Interfaces\IOptionPrice.cs" />
     <Compile Include="Interfaces\ISecurityInitializerProvider.cs" />
@@ -336,7 +338,6 @@
     <Compile Include="Data\Consolidators\OpenInterestConsolidator.cs" />
     <Compile Include="Data\Market\OpenInterest.cs" />
     <Compile Include="Data\Market\RenkoType.cs" />
-    <Compile Include="Data\Custom\DailyFx.cs" />
     <Compile Include="Data\Fundamental\FineFundamental.cs" />
     <Compile Include="Data\Fundamental\Generated\BalanceSheet.cs" />
     <Compile Include="Data\Fundamental\Generated\CashFlowStatement.cs" />
@@ -666,6 +667,7 @@
     <Compile Include="TradingCalendar.cs" />
     <Compile Include="TradingDay.cs" />
     <Compile Include="Util\BusyBlockingCollection.cs" />
+    <Compile Include="Util\BusyCollection.cs" />
     <Compile Include="Util\CircularQueue.cs" />
     <Compile Include="Util\Composer.cs" />
     <Compile Include="Util\DateTimeJsonConverter.cs" />

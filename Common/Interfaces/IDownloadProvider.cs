@@ -11,36 +11,24 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
 */
-
-using System;
+using System.Collections.Generic;
 
 namespace QuantConnect.Interfaces
 {
     /// <summary>
-    /// Defines a transport mechanism for data from its source into various reader methods
+    /// Wrapper on the API for downloading data for an algorithm.
     /// </summary>
-    public interface IStreamReader : IDisposable
+    public interface IDownloadProvider
     {
         /// <summary>
-        /// Gets the transport medium of this stream reader
+        /// Method for downloading data for an algorithm
         /// </summary>
-        SubscriptionTransportMedium TransportMedium { get; }
-
-        /// <summary>
-        /// Gets whether or not there's more data to be read in the stream
-        /// </summary>
-        bool EndOfStream { get; }
-
-        /// <summary>
-        /// Gets the next line/batch of content from the stream
-        /// </summary>
-        string ReadLine();
-
-        /// <summary>
-        /// Gets whether or not this stream reader should be rate limited
-        /// </summary>
-        bool ShouldBeRateLimited { get; }
+        /// <param name="address">Source URL to download from</param>
+        /// <param name="headers">Headers to pass to the site</param>
+        /// <param name="userName">Username for basic authentication</param>
+        /// <param name="password">Password for basic authentication</param>
+        /// <returns>String contents of file</returns>
+        string Download(string address, IEnumerable<KeyValuePair<string, string>> headers, string userName, string password);
     }
 }
