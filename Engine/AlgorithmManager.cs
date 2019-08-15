@@ -286,6 +286,12 @@ namespace QuantConnect.Lean.Engine
                 //Set the algorithm and real time handler's time
                 algorithm.SetDateTime(time);
 
+                // the time pulse are just to advance algorithm time, lets shortcut the loop here
+                if (timeSlice.IsTimePulse)
+                {
+                    continue;
+                }
+
                 // Update the current slice before firing scheduled events or any other task
                 algorithm.SetCurrentSlice(timeSlice.Slice);
 
@@ -325,6 +331,8 @@ namespace QuantConnect.Lean.Engine
                             security.IsTradable = false;
                         }
                     }
+
+                    realtime.OnSecuritiesChanged(timeSlice.SecurityChanges);
                 }
 
                 //Update the securities properties: first before calling user code to avoid issues with data
@@ -336,8 +344,11 @@ namespace QuantConnect.Lean.Engine
                         security.SetMarketPrice(data);
                     }
 
-                    // Send market price updates to the TradeBuilder
-                    algorithm.TradeBuilder.SetMarketPrice(security.Symbol, security.Price);
+                    if (!update.IsInternalConfig)
+                    {
+                        // Send market price updates to the TradeBuilder
+                        algorithm.TradeBuilder.SetMarketPrice(security.Symbol, security.Price);
+                    }
                 }
 
                 //Update the securities properties with any universe data
@@ -368,9 +379,6 @@ namespace QuantConnect.Lean.Engine
                 }
                 // security prices got updated
                 algorithm.Portfolio.InvalidateTotalPortfolioValue();
-
-                // sample alpha charts now that we've updated time/price information but BEFORE we receive new insights
-                alphas.ProcessSynchronousEvents();
 
                 // fire real time events after we've updated based on the new data
                 realtime.SetTime(timeSlice.Time);
@@ -690,6 +698,10 @@ namespace QuantConnect.Lean.Engine
                 // Manually trigger the event handler to prevent thread switch.
                 transactions.ProcessSynchronousEvents();
 
+                // sample alpha charts now that we've updated time/price information and after transactions
+                // are processed so that insights closed because of new order based insights get updated
+                alphas.ProcessSynchronousEvents();
+
                 //Save the previous time for the sample calculations
                 _previousTime = time;
 
@@ -943,6 +955,11 @@ namespace QuantConnect.Lean.Engine
                 }
                 if (algorithm.LiveMode && algorithm.IsWarmingUp)
                 {
+                    if (timeSlice.IsTimePulse)
+                    {
+                        continue;
+                    }
+
                     // this is hand-over logic, we spin up the data feed first and then request
                     // the history for warmup, so there will be some overlap between the data
                     if (lastHistoryTimeUtc.HasValue)

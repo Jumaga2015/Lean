@@ -17,6 +17,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using QuantConnect.Logging;
 using QuantConnect.Util;
 
 namespace QuantConnect.Algorithm.Framework.Alphas.Analysis
@@ -156,6 +157,11 @@ namespace QuantConnect.Algorithm.Framework.Alphas.Analysis
                         var context = new InsightAnalysisContext(insight, initialValues, analysisPeriod);
                         _openInsightContexts.Add(context);
 
+                        if (context.InitialValues.Price == 0)
+                        {
+                            Log.Error($"InsightManager.Step(): Warning {frontierTimeUtc} UTC: insight {insight} initial price value is 0");
+                        }
+
                         // let everyone know we've received an insight
                         _extensions.ForEach(e => e.OnInsightGenerated(context));
                     }
@@ -239,6 +245,9 @@ namespace QuantConnect.Algorithm.Framework.Alphas.Analysis
                 if (currentTimeUtc >= context.AnalysisEndTimeUtc)
                 {
                     context.Score.Finalize(currentTimeUtc);
+
+                    // set the last value used for scoring
+                    context.Insight.ReferenceValueFinal = context.CurrentValues.Get(context.Insight.Type);
 
                     _extensions.ForEach(e => e.OnInsightAnalysisCompleted(context));
 

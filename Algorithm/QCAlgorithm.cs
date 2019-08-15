@@ -544,31 +544,16 @@ namespace QuantConnect.Algorithm
             // if the benchmark hasn't been set yet, set it
             if (Benchmark == null)
             {
-                if (_benchmarkSymbol != null)
+                if (_benchmarkSymbol == null)
                 {
-                    // if the requested benchmark symbol wasn't already added, then add it now
-                    // we do a simple compare here for simplicity, also it avoids confusion over
-                    // the desired market.
-                    Security security;
-                    if (!Securities.TryGetValue(_benchmarkSymbol, out security))
-                    {
-                        // add the security as an internal feed so the algorithm doesn't receive the data
-                        security = CreateBenchmarkSecurity();
-                    }
+                    _benchmarkSymbol = QuantConnect.Symbol.Create("SPY", SecurityType.Equity, Market.USA);
+                }
 
-                    // just return the current price
-                    Benchmark = new SecurityBenchmark(security);
-                }
-                else
-                {
-                    var start = StartDate;
-                    var startingCapital = Portfolio.TotalPortfolioValue;
-                    Benchmark = new FuncBenchmark(dt =>
-                    {
-                        var years = (dt - start).TotalDays / 365.25;
-                        return startingCapital * (decimal) Math.Exp(0.02 * years);
-                    });
-                }
+                var security = Securities.CreateSecurity(_benchmarkSymbol,
+                    new List<SubscriptionDataConfig>(),
+                    leverage: 1);
+
+                Benchmark = new SecurityBenchmark(security);
             }
             // perform end of time step checks, such as enforcing underlying securities are in raw data mode
             OnEndOfTimeStep();
@@ -831,6 +816,9 @@ namespace QuantConnect.Algorithm
         /// End of a trading day event handler. This method is called at the end of the algorithm day (or multiple times if trading multiple assets).
         /// </summary>
         /// <remarks>Method is called 10 minutes before closing to allow user to close out position.</remarks>
+        /// <remarks>Deprecated because different assets have different market close times,
+        /// and because Python does not support two methods with the same name</remarks>
+        [Obsolete("This method is deprecated. Please use this overload: OnEndOfDay(Symbol symbol)")]
         public virtual void OnEndOfDay()
         {
 
@@ -1043,9 +1031,16 @@ namespace QuantConnect.Algorithm
         [Obsolete("Symbol implicit operator to string is provided for algorithm use only.")]
         public void SetBenchmark(SecurityType securityType, string symbol)
         {
-            string market = Market.USA;
+            if (_locked)
+            {
+                throw new InvalidOperationException("Algorithm.SetBenchmark(): Cannot change Benchmark after algorithm initialized.");
+            }
 
-            this.BrokerageModel.DefaultMarkets.TryGetValue(securityType, out market);
+            string market;
+            if (!BrokerageModel.DefaultMarkets.TryGetValue(securityType, out market))
+            {
+                market = Market.USA;
+            }
 
             _benchmarkSymbol = QuantConnect.Symbol.Create(symbol, securityType, market);
         }
@@ -1060,13 +1055,18 @@ namespace QuantConnect.Algorithm
         /// </remarks>
         public void SetBenchmark(string symbol)
         {
+            if (_locked)
+            {
+                throw new InvalidOperationException("Algorithm.SetBenchmark(): Cannot change Benchmark after algorithm initialized.");
+            }
+
             // check existence
             symbol = symbol.LazyToUpper();
             var security = Securities.FirstOrDefault(x => x.Key.Value == symbol).Value;
+
             if (security == null)
             {
                 Debug($"Warning: SetBenchmark({symbol}): no existing security found, benchmark security will be added with {SecurityType.Equity} type.");
-
                 _benchmarkSymbol = QuantConnect.Symbol.Create(symbol, SecurityType.Equity, Market.USA);
             }
             else
@@ -1081,6 +1081,10 @@ namespace QuantConnect.Algorithm
         /// <param name="symbol">symbol to use as the benchmark</param>
         public void SetBenchmark(Symbol symbol)
         {
+            if (_locked)
+            {
+                throw new InvalidOperationException("Algorithm.SetBenchmark(): Cannot change Benchmark after algorithm initialized.");
+            }
             _benchmarkSymbol = symbol;
         }
 
@@ -1091,6 +1095,10 @@ namespace QuantConnect.Algorithm
         /// <param name="benchmark">The benchmark producing function</param>
         public void SetBenchmark(Func<DateTime, decimal> benchmark)
         {
+            if (_locked)
+            {
+                throw new InvalidOperationException("Algorithm.SetBenchmark(): Cannot change Benchmark after algorithm initialized.");
+            }
             Benchmark = new FuncBenchmark(benchmark);
         }
 
@@ -1743,18 +1751,7 @@ namespace QuantConnect.Algorithm
             else
             {
                 var universe = UniverseManager.Select(x => x.Value).OfType<UserDefinedUniverse>().FirstOrDefault(x => x.Members.ContainsKey(symbol));
-                if (universe != null)
-                {
-                    universe.Remove(symbol);
-
-                    // if we are removing the symbol which is also the benchmark, add it back as internal feed
-                    if (symbol == _benchmarkSymbol)
-                    {
-                        Securities.Remove(symbol);
-
-                        security = CreateBenchmarkSecurity();
-                    }
-                }
+                universe?.Remove(symbol);
             }
 
             return true;
@@ -2040,38 +2037,6 @@ namespace QuantConnect.Algorithm
 
             AddToUserDefinedUniverse(security, configs);
             return (T)security;
-        }
-
-        /// <summary>
-        /// Creates and returns a <see cref="Security"/> object to be used as the benchmark
-        /// </summary>
-        private Security CreateBenchmarkSecurity()
-        {
-            // add the security as an internal feed so the algorithm doesn't receive the data
-            Resolution resolution;
-            if (_liveMode)
-            {
-                resolution = Resolution.Second;
-            }
-            else
-            {
-                // check to see if any universes arn't the ones added via AddSecurity
-                var hasNonAddSecurityUniverses = (
-                    from universe in UniverseManager.Select(kvp => kvp.Value).Union(_pendingUniverseAdditions)
-                    let config = universe.Configuration
-                    let symbol = UserDefinedUniverse.CreateSymbol(config.SecurityType, config.Market)
-                    where config.Symbol != symbol
-                    select universe).Any();
-
-                resolution = hasNonAddSecurityUniverses ? UniverseSettings.Resolution : Resolution.Daily;
-            }
-
-            var configs = SubscriptionManager.SubscriptionDataConfigService.Add(_benchmarkSymbol, resolution, isInternalFeed:true);
-            var security = Securities.CreateSecurity(_benchmarkSymbol, configs, 1m);
-
-            AddToUserDefinedUniverse(security, configs);
-
-            return security;
         }
 
         /// <summary>
