@@ -81,36 +81,18 @@ namespace QuantConnect.Lean.Engine.DataFeeds.Enumerators.Factories
         {
             var mapFileToUse = new MapFile(config.Symbol.Value, new List<MapFileRow>());
 
-            // load up the map and factor files for equities
-            if (!config.IsCustomData && config.SecurityType == SecurityType.Equity)
+            // load up the map and factor files for equities, options, and custom data
+            if (config.TickerShouldBeMapped())
             {
                 try
                 {
-                    var mapFile = mapFileResolver.ResolveMapFile(
-                        config.Symbol.ID.Symbol,
-                        config.Symbol.ID.Date);
+                    var mapFile = mapFileResolver.ResolveMapFile(config.Symbol, config.Type);
 
                     // only take the resolved map file if it has data, otherwise we'll use the empty one we defined above
-                    if (mapFile.Any()) mapFileToUse = mapFile;
-                }
-                catch (Exception err)
-                {
-                    Log.Error(err, "CorporateEventEnumeratorFactory.GetMapFileToUse():" +
-                        " Map File: " + config.Symbol.ID + ": ");
-                }
-            }
-
-            // load up the map and factor files for underlying of equity option
-            if (!config.IsCustomData && config.SecurityType == SecurityType.Option)
-            {
-                try
-                {
-                    var mapFile = mapFileResolver.ResolveMapFile(
-                        config.Symbol.Underlying.ID.Symbol,
-                        config.Symbol.Underlying.ID.Date);
-
-                    // only take the resolved map file if it has data, otherwise we'll use the empty one we defined above
-                    if (mapFile.Any()) mapFileToUse = mapFile;
+                    if (mapFile.Any())
+                    {
+                        mapFileToUse = mapFile;
+                    }
                 }
                 catch (Exception err)
                 {

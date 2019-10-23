@@ -13,6 +13,7 @@
  * limitations under the License.
 */
 
+using System;
 using System.Collections.Generic;
 using QuantConnect.Data;
 using QuantConnect.Interfaces;
@@ -51,6 +52,12 @@ namespace QuantConnect.Algorithm.CSharp
                 SetHoldings("SPY", 1);
                 Debug("Purchased Stock");
             }
+
+            Symbol symbol;
+            if (SymbolCache.TryGetSymbol("AAPL", out symbol))
+            {
+                throw new Exception("Benchmark Symbol is not expected to be added to the Symbol cache");
+            }
         }
 
         /// <summary>
@@ -76,16 +83,17 @@ namespace QuantConnect.Algorithm.CSharp
             {"Expectancy", "0"},
             {"Net Profit", "1.663%"},
             {"Sharpe Ratio", "4.076"},
+            {"Probabilistic Sharpe Ratio", "68.499%"},
             {"Loss Rate", "0%"},
             {"Win Rate", "0%"},
             {"Profit-Loss Ratio", "0"},
-            {"Alpha", "0.533"},
-            {"Beta", "0.287"},
+            {"Alpha", "0.494"},
+            {"Beta", "0.244"},
             {"Annual Standard Deviation", "0.173"},
             {"Annual Variance", "0.03"},
-            {"Information Ratio", "0.518"},
-            {"Tracking Error", "0.198"},
-            {"Treynor Ratio", "2.464"},
+            {"Information Ratio", "-0.788"},
+            {"Tracking Error", "0.203"},
+            {"Treynor Ratio", "2.889"},
             {"Total Fees", "$3.26"}
         };
     }

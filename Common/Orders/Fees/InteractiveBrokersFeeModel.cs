@@ -17,7 +17,7 @@ using System;
 using System.Collections.Generic;
 using QuantConnect.Orders.Fills;
 using QuantConnect.Securities;
-
+using static QuantConnect.StringExtensions;
 
 namespace QuantConnect.Orders.Fees
 {
@@ -98,7 +98,7 @@ namespace QuantConnect.Orders.Fees
                     Func<decimal, decimal, CashAmount> optionsCommissionFunc;
                     if (!_optionFee.TryGetValue(market, out optionsCommissionFunc))
                     {
-                        throw new Exception($"InteractiveBrokersFeeModel(): unexpected option Market {market}");
+                        throw new KeyNotFoundException($"InteractiveBrokersFeeModel(): unexpected option Market {market}");
                     }
                     // applying commission function to the order
                     var optionFee = optionsCommissionFunc(order.AbsoluteQuantity, order.Price);
@@ -118,7 +118,7 @@ namespace QuantConnect.Orders.Fees
                     CashAmount feeRatePerContract;
                     if (!_futureFee.TryGetValue(market, out feeRatePerContract))
                     {
-                        throw new Exception($"InteractiveBrokersFeeModel(): unexpected future Market {market}");
+                        throw new KeyNotFoundException($"InteractiveBrokersFeeModel(): unexpected future Market {market}");
                     }
                     feeResult = order.AbsoluteQuantity * feeRatePerContract.Amount;
                     feeCurrency = feeRatePerContract.Currency;
@@ -128,7 +128,7 @@ namespace QuantConnect.Orders.Fees
                     EquityFee equityFee;
                     if (!_equityFee.TryGetValue(market, out equityFee))
                     {
-                        throw new Exception($"InteractiveBrokersFeeModel(): unexpected equity Market {market}");
+                        throw new KeyNotFoundException($"InteractiveBrokersFeeModel(): unexpected equity Market {market}");
                     }
                     var tradeValue = Math.Abs(order.GetValue(security));
 
@@ -154,7 +154,7 @@ namespace QuantConnect.Orders.Fees
 
                 default:
                     // unsupported security type
-                    throw new ArgumentException($"Unsupported security type: {security.Type}");
+                    throw new ArgumentException(Invariant($"Unsupported security type: {security.Type}"));
             }
 
             return new OrderFee(new CashAmount(

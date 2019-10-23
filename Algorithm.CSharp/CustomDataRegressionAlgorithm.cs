@@ -60,7 +60,8 @@ namespace QuantConnect.Algorithm.CSharp
                 //Bitcoin used as a tradable asset, like stocks, futures etc.
                 if (data.Close != 0)
                 {
-                    Order("BTC", Portfolio.MarginRemaining / Math.Abs(data.Close + 1));
+                    //Access custom data symbols using <ticker>.<custom-type>
+                    Order("BTC.Bitcoin", Portfolio.MarginRemaining / Math.Abs(data.Close + 1));
                 }
             }
         }
@@ -88,6 +89,7 @@ namespace QuantConnect.Algorithm.CSharp
             {"Expectancy", "0"},
             {"Net Profit", "5123.170%"},
             {"Sharpe Ratio", "1.199"},
+            {"Probabilistic Sharpe Ratio", "68.776%"},
             {"Loss Rate", "0%"},
             {"Win Rate", "0%"},
             {"Profit-Loss Ratio", "0"},
@@ -95,9 +97,9 @@ namespace QuantConnect.Algorithm.CSharp
             {"Beta", "0.157"},
             {"Annual Standard Deviation", "0.84"},
             {"Annual Variance", "0.706"},
-            {"Information Ratio", "1.054"},
+            {"Information Ratio", "1.052"},
             {"Tracking Error", "0.846"},
-            {"Treynor Ratio", "6.405"},
+            {"Treynor Ratio", "6.431"},
             {"Total Fees", "$0.00"}
         };
 

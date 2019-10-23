@@ -32,13 +32,11 @@ using QuantConnect.Lean.Engine.DataFeeds;
 using QuantConnect.Lean.Engine.RealTime;
 using QuantConnect.Lean.Engine.Results;
 using QuantConnect.Lean.Engine.Server;
-using QuantConnect.Lean.Engine.Setup;
 using QuantConnect.Lean.Engine.TransactionHandlers;
 using QuantConnect.Orders;
 using QuantConnect.Packets;
 using QuantConnect.Scheduling;
 using QuantConnect.Securities;
-using QuantConnect.Statistics;
 using Log = QuantConnect.Logging.Log;
 
 namespace QuantConnect.Tests.Engine
@@ -58,11 +56,17 @@ namespace QuantConnect.Tests.Engine
             var dataManager = new DataManager(feed,
                 new UniverseSelection(
                     algorithm,
-                    new SecurityService(algorithm.Portfolio.CashBook, marketHoursDatabase, symbolPropertiesDataBase, algorithm)),
+                    new SecurityService(algorithm.Portfolio.CashBook,
+                        marketHoursDatabase,
+                        symbolPropertiesDataBase,
+                        algorithm,
+                        RegisteredSecurityDataTypesProvider.Null,
+                        new SecurityCacheProvider(algorithm.Portfolio))),
                 algorithm,
                 algorithm.TimeKeeper,
                 marketHoursDatabase,
-                false);
+                false,
+                RegisteredSecurityDataTypesProvider.Null);
             algorithm.SubscriptionManager.SetDataManager(dataManager);
             var transactions = new BacktestingTransactionHandler();
             var results = new BacktestingResultHandler();
@@ -75,8 +79,8 @@ namespace QuantConnect.Tests.Engine
             algorithm.Initialize();
             algorithm.PostInitialize();
 
-            results.Initialize(job, new QuantConnect.Messaging.Messaging(), new Api.Api(), new BacktestingSetupHandler(), transactions);
-            results.SetAlgorithm(algorithm);
+            results.Initialize(job, new QuantConnect.Messaging.Messaging(), new Api.Api(), transactions);
+            results.SetAlgorithm(algorithm, algorithm.Portfolio.TotalPortfolioValue);
             transactions.Initialize(algorithm, new BacktestingBrokerage(algorithm), results);
             feed.Initialize(algorithm, job, results, null, null, null, dataManager, null);
 
@@ -156,7 +160,6 @@ namespace QuantConnect.Tests.Engine
             public void Initialize(AlgorithmNodePacket job,
                 IMessagingHandler messagingHandler,
                 IApi api,
-                ISetupHandler setupHandler,
                 ITransactionHandler transactionHandler)
             {
             }
@@ -213,7 +216,7 @@ namespace QuantConnect.Tests.Engine
             {
             }
 
-            public void SetAlgorithm(IAlgorithm algorithm)
+            public void SetAlgorithm(IAlgorithm algorithm, decimal startingPortfolioValue)
             {
             }
 
@@ -225,13 +228,7 @@ namespace QuantConnect.Tests.Engine
             {
             }
 
-            public void SendFinalResult(AlgorithmNodePacket job,
-                Dictionary<int, Order> orders,
-                Dictionary<DateTime, decimal> profitLoss,
-                Dictionary<string, Holding> holdings,
-                CashBook cashbook,
-                StatisticsResults statisticsResults,
-                Dictionary<string, string> banner)
+            public void SendFinalResult()
             {
             }
 
@@ -288,7 +285,7 @@ namespace QuantConnect.Tests.Engine
             }
 
             public bool IsActive { get; }
-            public void Setup(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api)
+            public void Setup(IAlgorithm algorithm, AlgorithmNodePacket job, IResultHandler resultHandler, IApi api, IIsolatorLimitResultProvider isolatorLimitProvider)
             {
             }
 

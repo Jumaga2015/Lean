@@ -16,12 +16,8 @@
 
 using System;
 using System.ComponentModel.Composition;
-using System.Diagnostics;
-using System.IO;
 using System.Threading;
-using System.Windows.Forms;
 using QuantConnect.Configuration;
-using QuantConnect.Interfaces;
 using QuantConnect.Lean.Engine;
 using QuantConnect.Logging;
 using QuantConnect.Packets;
@@ -37,7 +33,7 @@ namespace QuantConnect.Lean.Launcher
         {
             AppDomain.CurrentDomain.AssemblyLoad += (sender, e) =>
             {
-                if (e.LoadedAssembly.FullName.ToLower().Contains("python"))
+                if (e.LoadedAssembly.FullName.ToLowerInvariant().Contains("python"))
                 {
                     Log.Trace($"Python for .NET Assembly: {e.LoadedAssembly.GetName()}");
                 }
@@ -108,23 +104,6 @@ namespace QuantConnect.Lean.Launcher
                 throw;
             }
 
-            if (environment.EndsWith("-desktop"))
-            {
-                if (!File.Exists(Config.Get("desktop-exe")))
-                {
-                    var message = $"desktop-exe path ({Config.Get("desktop-exe")}) does not exist. You may need to update this path with the build configuration (currently ${mode})";
-                    Log.Error(message);
-                    throw new FileNotFoundException(message);
-                }
-                var info = new ProcessStartInfo
-                {
-                    UseShellExecute = false,
-                    FileName  = Config.Get("desktop-exe"),
-                    Arguments = Config.Get("desktop-http-port")
-                };
-                Process.Start(info);
-            }
-
             // if the job version doesn't match this instance version then we can't process it
             // we also don't want to reprocess redelivered jobs
             if (VersionHelper.IsNotEqualVersion(job.Version) || job.Redelivered)
@@ -141,7 +120,7 @@ namespace QuantConnect.Lean.Launcher
 
             try
             {
-                var algorithmManager = new AlgorithmManager(liveMode);
+                var algorithmManager = new AlgorithmManager(liveMode, job);
 
                 leanEngineSystemHandlers.LeanManager.Initialize(leanEngineSystemHandlers, leanEngineAlgorithmHandlers, job, algorithmManager);
 

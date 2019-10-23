@@ -47,7 +47,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
                 config,
                 new Cash(Currencies.USD, 0, 1),
                 SymbolProperties.GetDefault(Currencies.USD),
-                ErrorCurrencyConverter.Instance
+                ErrorCurrencyConverter.Instance,
+                RegisteredSecurityDataTypesProvider.Null,
+                new SecurityCache()
             );
             var request = new SubscriptionRequest(false, null, security, config, parameters.StartDate, parameters.EndDate);
             var fileProvider = new DefaultDataProvider();
@@ -82,6 +84,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
             Assert.AreEqual(parameters.EquityPerShareGrowth1Y, row.EarningRatios.EquityPerShareGrowth);
             Assert.AreEqual(parameters.PeRatio, row.ValuationRatios.PERatio);
             Assert.AreEqual(parameters.NetIncomeExtraordinary3M, row.FinancialStatements.IncomeStatement.NetIncomeExtraordinary.ThreeMonths);
+            enumerator.Dispose();
         }
 
         [Test]
@@ -97,7 +100,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
                 config,
                 new Cash(Currencies.USD, 0, 1),
                 SymbolProperties.GetDefault(Currencies.USD),
-                ErrorCurrencyConverter.Instance
+                ErrorCurrencyConverter.Instance,
+                RegisteredSecurityDataTypesProvider.Null,
+                new SecurityCache()
             );
             var request = new SubscriptionRequest(false, null, security, config, startDate, endDate);
             var fileProvider = new DefaultDataProvider();
@@ -107,7 +112,7 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
             var fine = (FineFundamental)enumerator.Current;
             Assert.AreEqual(438783011299, fine.CompanyProfile.EnterpriseValue);
             Assert.AreEqual(311, fine.AssetClassification.MorningstarSectorCode);
-
+            enumerator.Dispose();
         }
 
         [Test]
@@ -134,7 +139,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
                 config,
                 new Cash(Currencies.USD, 0, 1),
                 SymbolProperties.GetDefault(Currencies.USD),
-                ErrorCurrencyConverter.Instance
+                ErrorCurrencyConverter.Instance,
+                RegisteredSecurityDataTypesProvider.Null,
+                new SecurityCache()
             );
             var request = new SubscriptionRequest(false, null, security, config, startDate, endDate);
             var fileProvider = new DefaultDataProvider();

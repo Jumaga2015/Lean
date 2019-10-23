@@ -40,7 +40,6 @@ namespace QuantConnect.Queues
         private static readonly int UserId = Config.GetInt("job-user-id", 0);
         private static readonly int ProjectId = Config.GetInt("job-project-id", 0);
         private readonly string AlgorithmTypeName = Config.Get("algorithm-type-name");
-        private readonly string AlgorithmPathPython = Config.Get("algorithm-path-python", "../../../Algorithm.Python/");
         private readonly Language Language = (Language)Enum.Parse(typeof(Language), Config.Get("algorithm-language"));
 
         /// <summary>
@@ -71,7 +70,7 @@ namespace QuantConnect.Queues
         {
             location = GetAlgorithmLocation();
 
-            Log.Trace("JobQueue.NextJob(): Selected " + location);
+            Log.Trace($"JobQueue.NextJob(): Selected {location}");
 
             // check for parameters in the config
             var parameters = new Dictionary<string, string>();
@@ -139,7 +138,7 @@ namespace QuantConnect.Queues
                 }
                 catch (Exception err)
                 {
-                    Log.Error(err, string.Format("Error resolving BrokerageData for live job for brokerage {0}:", liveJob.Brokerage));
+                    Log.Error(err, $"Error resolving BrokerageData for live job for brokerage {liveJob.Brokerage}");
                 }
 
                 return liveJob;
@@ -177,14 +176,14 @@ namespace QuantConnect.Queues
                 if (!File.Exists(pythonSource))
                 {
                     // Copies file to execution location
-                    foreach (var file in new DirectoryInfo(AlgorithmPathPython).GetFiles("*.py"))
+                    foreach (var file in new DirectoryInfo(Path.GetDirectoryName(AlgorithmLocation)).GetFiles("*.py"))
                     {
                         file.CopyTo(file.FullName.Replace(file.DirectoryName, Environment.CurrentDirectory), true);
                     }
 
                     if (!File.Exists(pythonSource))
                     {
-                        throw new Exception("JobQueue.TryCreatePythonAlgorithm(): Unable to find py file: " + pythonSource);
+                        throw new FileNotFoundException($"JobQueue.TryCreatePythonAlgorithm(): Unable to find py file: {pythonSource}");
                     }
                 }
             }

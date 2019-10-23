@@ -177,7 +177,12 @@ namespace QuantConnect.AlgorithmFactory
                 {
                     using (Py.GIL())
                     {
-                        PythonEngine.Exec("import os, sys; sys.stdout = open(os.devnull, 'w')");
+                        PythonEngine.Exec(
+                            @"
+import logging, os, sys
+sys.stdout = open(os.devnull, 'w')
+logging.captureWarnings(True)"
+                        );
                     }
                 }
             }
@@ -239,12 +244,6 @@ namespace QuantConnect.AlgorithmFactory
                     Log.Trace("Loader.TryCreateILAlgorithm(): Loading debug information with algorithm");
                     var assemblyBytes = File.ReadAllBytes(assemblyPath);
                     assembly = Assembly.Load(assemblyBytes, debugInformationBytes);
-                }
-                if (assembly == null)
-                {
-                    errorMessage = "Assembly is null.";
-                    Log.Error("Loader.TryCreateILAlgorithm(): Assembly is null");
-                    return false;
                 }
 
                 //Get the list of extention classes in the library:
@@ -314,7 +313,18 @@ namespace QuantConnect.AlgorithmFactory
                 }
                 catch (ReflectionTypeLoadException e)
                 {
-                    assemblyTypes = e.Types;
+                    // We may want to exclude possible null values
+                    // See https://stackoverflow.com/questions/7889228/how-to-prevent-reflectiontypeloadexception-when-calling-assembly-gettypes
+                    assemblyTypes = e.Types.Where(t => t != null).ToArray();
+
+                    var countTypesNotLoaded = e.LoaderExceptions.Length;
+                    Log.Error($"Loader.GetExtendedTypeNames(): Unable to load {countTypesNotLoaded} of the requested types, " +
+                              "see below for more details on what causes an issue:");
+
+                    foreach (Exception inner in e.LoaderExceptions)
+                    {
+                        Log.Error($"Loader.GetExtendedTypeNames(): {inner.Message}");
+                    }
                 }
 
                 if (assemblyTypes != null && assemblyTypes.Length > 0)

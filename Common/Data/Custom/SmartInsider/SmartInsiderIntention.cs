@@ -13,41 +13,37 @@
  * limitations under the License.
 */
 
+using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace QuantConnect.Data.Custom.SmartInsider
 {
     /// <summary>
-    /// Smart Insider Intentions - Contains information about
-    /// intentions for an insider to purchase stock
+    /// Smart Insider Intentions - Intention to execute a stock buyback and details about the future event
     /// </summary>
     public class SmartInsiderIntention : SmartInsiderEvent
     {
         /// <summary>
         /// Describes how the transaction was executed
         /// </summary>
-        public string IntentionVia { get; set; }
+        public SmartInsiderExecution? Execution { get; set; }
 
         /// <summary>
-        /// Describes which entity carried out the transaction
+        /// Describes which entity intends to execute the transaction
         /// </summary>
-        public string IntentionBy { get; set; }
+        public SmartInsiderExecutionEntity? ExecutionEntity { get; set; }
 
         /// <summary>
         /// Describes what will be done with those shares following repurchase
         /// </summary>
-        public string BuybackIntentionHoldingType { get; set; }
+        public SmartInsiderExecutionHolding? ExecutionHolding { get; set; }
 
         /// <summary>
         /// Number of shares to be or authorised to be traded
         /// </summary>
-        public int? IntentionAmount { get; set; }
+        public int? Amount { get; set; }
 
         /// <summary>
         /// Currency of the value of shares to be/Authorised to be traded (ISO Code)
@@ -55,24 +51,24 @@ namespace QuantConnect.Data.Custom.SmartInsider
         public string ValueCurrency { get; set; }
 
         /// <summary>
-        /// Valueof shares to be authorised to be traded
+        /// Value of shares to be authorised to be traded
         /// </summary>
-        public long? IntentionValue { get; set; }
+        public long? AmountValue { get; set; }
 
         /// <summary>
         /// Percentage of oustanding shares to be authorised to be traded
         /// </summary>
-        public decimal? IntentionPercentage { get; set; }
+        public decimal? Percentage { get; set; }
 
         /// <summary>
         /// start of the period the intention/authorisation applies to
         /// </summary>
-        public DateTime? IntentionAuthorisationStartDate { get; set; }
+        public DateTime? AuthorizationStartDate { get; set; }
 
         /// <summary>
         /// End of the period the intention/authorisation applies to
         /// </summary>
-        public DateTime? IntentionAuthorisationEndDate { get; set; }
+        public DateTime? AuthorizationEndDate { get; set; }
 
         /// <summary>
         /// Currency of min/max prices (ISO Code)
@@ -92,7 +88,7 @@ namespace QuantConnect.Data.Custom.SmartInsider
         /// <summary>
         /// Free text which explains further details about the trade
         /// </summary>
-        public string BuybackIntentionNoteText { get; set; }
+        public string NoteText { get; set; }
 
         /// <summary>
         /// Empty constructor required for <see cref="Slice.Get{T}()"/>
@@ -108,20 +104,20 @@ namespace QuantConnect.Data.Custom.SmartInsider
         public SmartInsiderIntention(string line) : base(line)
         {
             var tsv = line.Split('\t');
-
-            IntentionVia = string.IsNullOrWhiteSpace(tsv[26]) ? null : tsv[26];
-            IntentionBy = string.IsNullOrWhiteSpace(tsv[27]) ? null : tsv[27];
-            BuybackIntentionHoldingType = string.IsNullOrWhiteSpace(tsv[28]) ? null : tsv[28];
-            IntentionAmount = string.IsNullOrWhiteSpace(tsv[29]) ? (int?)null : Convert.ToInt32(tsv[29], CultureInfo.InvariantCulture);
+            Execution = string.IsNullOrWhiteSpace(tsv[26]) ? (SmartInsiderExecution?)null : JsonConvert.DeserializeObject<SmartInsiderExecution>($"\"{tsv[26]}\"");
+            ExecutionEntity = string.IsNullOrWhiteSpace(tsv[27]) ? (SmartInsiderExecutionEntity?)null : JsonConvert.DeserializeObject<SmartInsiderExecutionEntity>($"\"{tsv[27]}\"");
+            ExecutionHolding = string.IsNullOrWhiteSpace(tsv[28]) ? (SmartInsiderExecutionHolding?)null : JsonConvert.DeserializeObject<SmartInsiderExecutionHolding>($"\"{tsv[28]}\"");
+            ExecutionHolding = ExecutionHolding == SmartInsiderExecutionHolding.Error ? SmartInsiderExecutionHolding.SatisfyStockVesting : ExecutionHolding;
+            Amount = string.IsNullOrWhiteSpace(tsv[29]) ? (int?)null : Convert.ToInt32(tsv[29], CultureInfo.InvariantCulture);
             ValueCurrency = string.IsNullOrWhiteSpace(tsv[30]) ? null : tsv[30];
-            IntentionValue = string.IsNullOrWhiteSpace(tsv[31]) ? (long?)null : Convert.ToInt64(tsv[31], CultureInfo.InvariantCulture);
-            IntentionPercentage = string.IsNullOrWhiteSpace(tsv[32]) ? (decimal?)null : Convert.ToDecimal(tsv[32], CultureInfo.InvariantCulture);
-            IntentionAuthorisationStartDate = string.IsNullOrWhiteSpace(tsv[33]) ? (DateTime?)null : DateTime.ParseExact(tsv[33], "yyyyMMdd", CultureInfo.InvariantCulture);
-            IntentionAuthorisationEndDate = string.IsNullOrWhiteSpace(tsv[34]) ? (DateTime?)null : DateTime.ParseExact(tsv[34], "yyyyMMdd", CultureInfo.InvariantCulture);
+            AmountValue = string.IsNullOrWhiteSpace(tsv[31]) ? (long?)null : Convert.ToInt64(tsv[31], CultureInfo.InvariantCulture);
+            Percentage = string.IsNullOrWhiteSpace(tsv[32]) ? (decimal?)null : Convert.ToDecimal(tsv[32], CultureInfo.InvariantCulture);
+            AuthorizationStartDate = string.IsNullOrWhiteSpace(tsv[33]) ? (DateTime?)null : DateTime.ParseExact(tsv[33], "yyyyMMdd", CultureInfo.InvariantCulture);
+            AuthorizationEndDate = string.IsNullOrWhiteSpace(tsv[34]) ? (DateTime?)null : DateTime.ParseExact(tsv[34], "yyyyMMdd", CultureInfo.InvariantCulture);
             PriceCurrency = string.IsNullOrWhiteSpace(tsv[35]) ? null : tsv[35];
             MinimumPrice = string.IsNullOrWhiteSpace(tsv[36]) ? (decimal?)null : Convert.ToDecimal(tsv[36], CultureInfo.InvariantCulture);
             MaximumPrice = string.IsNullOrWhiteSpace(tsv[37]) ? (decimal?)null : Convert.ToDecimal(tsv[37], CultureInfo.InvariantCulture);
-            BuybackIntentionNoteText = tsv.Length == 39? (string.IsNullOrWhiteSpace(tsv[38]) ? null : tsv[38]) : null;
+            NoteText = tsv.Length == 39? (string.IsNullOrWhiteSpace(tsv[38]) ? null : tsv[38]) : null;
         }
 
         /// <summary>
@@ -134,7 +130,7 @@ namespace QuantConnect.Data.Custom.SmartInsider
             var tsv = line.Split('\t');
 
             TransactionID = string.IsNullOrWhiteSpace(tsv[0]) ? null : tsv[0];
-            BuybackType = string.IsNullOrWhiteSpace(tsv[1]) ? null : tsv[1];
+            EventType = string.IsNullOrWhiteSpace(tsv[1]) ? (SmartInsiderEventType?)null : JsonConvert.DeserializeObject<SmartInsiderEventType>($"\"{tsv[1]}\"");
             LastUpdate = DateTime.ParseExact(tsv[2], "yyyy-MM-dd", CultureInfo.InvariantCulture);
             LastIDsUpdate = string.IsNullOrWhiteSpace(tsv[3]) ? (DateTime?)null : DateTime.ParseExact(tsv[3], "yyyy-MM-dd", CultureInfo.InvariantCulture);
             ISIN = string.IsNullOrWhiteSpace(tsv[4]) ? null : tsv[4];
@@ -161,19 +157,20 @@ namespace QuantConnect.Data.Custom.SmartInsider
             TimeProcessedUtc = string.IsNullOrWhiteSpace(tsv[41]) ? (DateTime?)null : DateTime.ParseExact(tsv[41].Replace(" ", "").Trim(), "yyyy-MM-ddHH:mm:ss", CultureInfo.InvariantCulture);
             AnnouncedIn = string.IsNullOrWhiteSpace(tsv[42]) ? null : tsv[42];
 
-            IntentionVia = string.IsNullOrWhiteSpace(tsv[43]) ? null : tsv[43];
-            IntentionBy = string.IsNullOrWhiteSpace(tsv[44]) ? null : tsv[44];
-            BuybackIntentionHoldingType = string.IsNullOrWhiteSpace(tsv[45]) ? null : tsv[45];
-            IntentionAmount = string.IsNullOrWhiteSpace(tsv[46]) ? (int?)null : Convert.ToInt32(tsv[46], CultureInfo.InvariantCulture);
+            Execution = string.IsNullOrWhiteSpace(tsv[43]) ? (SmartInsiderExecution?)null : JsonConvert.DeserializeObject<SmartInsiderExecution>($"\"{tsv[43]}\"");
+            ExecutionEntity = string.IsNullOrWhiteSpace(tsv[44]) ? (SmartInsiderExecutionEntity?)null : JsonConvert.DeserializeObject<SmartInsiderExecutionEntity>($"\"{tsv[44]}\"");
+            ExecutionHolding = string.IsNullOrWhiteSpace(tsv[45]) ? (SmartInsiderExecutionHolding?)null : JsonConvert.DeserializeObject<SmartInsiderExecutionHolding>($"\"{tsv[45]}\"");
+            ExecutionHolding = ExecutionHolding == SmartInsiderExecutionHolding.Error ? SmartInsiderExecutionHolding.SatisfyStockVesting : ExecutionHolding;
+            Amount = string.IsNullOrWhiteSpace(tsv[46]) ? (int?)null : Convert.ToInt32(tsv[46], CultureInfo.InvariantCulture);
             ValueCurrency = string.IsNullOrWhiteSpace(tsv[47]) ? null : tsv[47];
-            IntentionValue = string.IsNullOrWhiteSpace(tsv[48]) ? (long?)null : Convert.ToInt64(tsv[48], CultureInfo.InvariantCulture);
-            IntentionPercentage = string.IsNullOrWhiteSpace(tsv[49]) ? (decimal?)null : Convert.ToDecimal(tsv[49], CultureInfo.InvariantCulture);
-            IntentionAuthorisationStartDate = string.IsNullOrWhiteSpace(tsv[50]) ? (DateTime?)null : DateTime.ParseExact(tsv[50], "yyyy-MM-dd", CultureInfo.InvariantCulture);
-            IntentionAuthorisationEndDate = string.IsNullOrWhiteSpace(tsv[51]) ? (DateTime?)null : DateTime.ParseExact(tsv[51], "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            AmountValue = string.IsNullOrWhiteSpace(tsv[48]) ? (long?)null : Convert.ToInt64(tsv[48], CultureInfo.InvariantCulture);
+            Percentage = string.IsNullOrWhiteSpace(tsv[49]) ? (decimal?)null : Convert.ToDecimal(tsv[49], CultureInfo.InvariantCulture);
+            AuthorizationStartDate = string.IsNullOrWhiteSpace(tsv[50]) ? (DateTime?)null : DateTime.ParseExact(tsv[50], "yyyy-MM-dd", CultureInfo.InvariantCulture);
+            AuthorizationEndDate = string.IsNullOrWhiteSpace(tsv[51]) ? (DateTime?)null : DateTime.ParseExact(tsv[51], "yyyy-MM-dd", CultureInfo.InvariantCulture);
             PriceCurrency = string.IsNullOrWhiteSpace(tsv[52]) ? null : tsv[52];
             MinimumPrice = string.IsNullOrWhiteSpace(tsv[53]) ? (decimal?)null : Convert.ToDecimal(tsv[53], CultureInfo.InvariantCulture);
             MaximumPrice = string.IsNullOrWhiteSpace(tsv[54]) ? (decimal?)null : Convert.ToDecimal(tsv[54], CultureInfo.InvariantCulture);
-            BuybackIntentionNoteText = tsv.Length == 56 ? (string.IsNullOrWhiteSpace(tsv[55]) ? null : tsv[55]) : null;
+            NoteText = tsv.Length == 56 ? (string.IsNullOrWhiteSpace(tsv[55]) ? null : tsv[55]) : null;
         }
 
         /// <summary>
@@ -191,7 +188,7 @@ namespace QuantConnect.Data.Custom.SmartInsider
                     "alternative",
                     "smartinsider",
                     "intentions",
-                    $"{config.Symbol.Value.ToLower()}.tsv"
+                    $"{config.Symbol.Value.ToLowerInvariant()}.tsv"
                 ),
                 SubscriptionTransportMedium.LocalFile,
                 FileFormat.Csv
@@ -230,7 +227,7 @@ namespace QuantConnect.Data.Custom.SmartInsider
             return new SmartInsiderIntention()
             {
                 TransactionID = TransactionID,
-                BuybackType = BuybackType,
+                EventType = EventType,
                 LastUpdate = LastUpdate,
                 LastIDsUpdate = LastIDsUpdate,
                 ISIN = ISIN,
@@ -256,19 +253,23 @@ namespace QuantConnect.Data.Custom.SmartInsider
                 TimeProcessedUtc = TimeProcessedUtc,
                 AnnouncedIn = AnnouncedIn,
 
-                IntentionVia = IntentionVia,
-                IntentionBy = IntentionBy,
-                BuybackIntentionHoldingType = BuybackIntentionHoldingType,
-                IntentionAmount = IntentionAmount,
+                Execution = Execution,
+                ExecutionEntity = ExecutionEntity,
+                ExecutionHolding = ExecutionHolding,
+                Amount = Amount,
                 ValueCurrency = ValueCurrency,
-                IntentionValue = IntentionValue,
-                IntentionPercentage = IntentionPercentage,
-                IntentionAuthorisationStartDate = IntentionAuthorisationStartDate,
-                IntentionAuthorisationEndDate = IntentionAuthorisationEndDate,
+                AmountValue = AmountValue,
+                Percentage = Percentage,
+                AuthorizationStartDate = AuthorizationStartDate,
+                AuthorizationEndDate = AuthorizationEndDate,
                 PriceCurrency = PriceCurrency,
                 MinimumPrice = MinimumPrice,
                 MaximumPrice = MaximumPrice,
-                BuybackIntentionNoteText = BuybackIntentionNoteText
+                NoteText = NoteText,
+
+                Symbol = Symbol,
+                Value = Value,
+                Time = Time,
             };
         }
 
@@ -281,9 +282,9 @@ namespace QuantConnect.Data.Custom.SmartInsider
         {
             return string.Join("\t",
                 TransactionID,
-                BuybackType,
-                LastUpdate.ToString("yyyyMMdd"),
-                LastIDsUpdate?.ToString("yyyyMMdd"),
+                JsonConvert.SerializeObject(EventType).Replace("\"", ""),
+                LastUpdate.ToStringInvariant("yyyyMMdd"),
+                LastIDsUpdate?.ToStringInvariant("yyyyMMdd"),
                 ISIN,
                 USDMarketCap,
                 CompanyID,
@@ -293,32 +294,32 @@ namespace QuantConnect.Data.Custom.SmartInsider
                 ICBSubSector,
                 ICBCode,
                 CompanyName,
-                PreviousResultsAnnouncementDate?.ToString("yyyyMMdd"),
-                NextResultsAnnouncementsDate?.ToString("yyyyMMdd"),
-                NextCloseBegin?.ToString("yyyyMMdd"),
-                LastCloseEnded?.ToString("yyyyMMdd"),
+                PreviousResultsAnnouncementDate?.ToStringInvariant("yyyyMMdd"),
+                NextResultsAnnouncementsDate?.ToStringInvariant("yyyyMMdd"),
+                NextCloseBegin?.ToStringInvariant("yyyyMMdd"),
+                LastCloseEnded?.ToStringInvariant("yyyyMMdd"),
                 SecurityDescription,
                 TickerCountry,
                 TickerSymbol,
-                AnnouncementDate?.ToString("yyyyMMdd"),
-                TimeReleased?.ToString("yyyyMMdd HH:mm:ss"),
-                TimeProcessed?.ToString("yyyyMMdd HH:mm:ss"),
-                TimeReleasedUtc?.ToString("yyyyMMdd HH:mm:ss"),
-                TimeProcessedUtc?.ToString("yyyyMMdd HH:mm:ss"),
+                AnnouncementDate?.ToStringInvariant("yyyyMMdd"),
+                TimeReleased?.ToStringInvariant("yyyyMMdd HH:mm:ss"),
+                TimeProcessed?.ToStringInvariant("yyyyMMdd HH:mm:ss"),
+                TimeReleasedUtc?.ToStringInvariant("yyyyMMdd HH:mm:ss"),
+                TimeProcessedUtc?.ToStringInvariant("yyyyMMdd HH:mm:ss"),
                 AnnouncedIn,
-                IntentionVia,
-                IntentionBy,
-                BuybackIntentionHoldingType,
-                IntentionAmount,
+                JsonConvert.SerializeObject(Execution).Replace("\"", ""),
+                JsonConvert.SerializeObject(ExecutionEntity).Replace("\"", ""),
+                JsonConvert.SerializeObject(ExecutionHolding).Replace("\"", ""),
+                Amount,
                 ValueCurrency,
-                IntentionValue,
-                IntentionPercentage,
-                IntentionAuthorisationStartDate?.ToString("yyyyMMdd"),
-                IntentionAuthorisationEndDate?.ToString("yyyyMMdd"),
+                AmountValue,
+                Percentage,
+                AuthorizationStartDate?.ToStringInvariant("yyyyMMdd"),
+                AuthorizationEndDate?.ToStringInvariant("yyyyMMdd"),
                 PriceCurrency,
                 MinimumPrice,
                 MaximumPrice,
-                BuybackIntentionNoteText);
+                NoteText);
         }
     }
 }

@@ -17,7 +17,9 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using NodaTime;
 using QuantConnect.Data.UniverseSelection;
+using static QuantConnect.StringExtensions;
 
 namespace QuantConnect.Data.Custom.TradingEconomics
 {
@@ -74,31 +76,25 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         /// Latest released value
         /// </summary>
         [JsonProperty(PropertyName = "Actual")]
-        public string Actual { get; set; }
+        public decimal? Actual { get; set; }
 
         /// <summary>
         /// Value for the previous period after the revision (if revision is applicable)
         /// </summary>
         [JsonProperty(PropertyName = "Previous")]
-        public string Previous { get; set; }
+        public decimal? Previous { get; set; }
 
         /// <summary>
         /// Average forecast among a representative group of economists
         /// </summary>
         [JsonProperty(PropertyName = "Forecast")]
-        public string Forecast { get; set; }
+        public decimal? Forecast { get; set; }
 
         /// <summary>
         /// TradingEconomics own projections
         /// </summary>
         [JsonProperty(PropertyName = "TEForecast")]
-        public string TradingEconomicsForecast { get; set; }
-
-        /// <summary>
-        /// Hyperlink at Trading Economics
-        /// </summary>
-        [JsonProperty(PropertyName = "URL")]
-        public string Url { get; set; }
+        public decimal? TradingEconomicsForecast { get; set; }
 
         /// <summary>
         /// 0 indicates that the time of the event is known,
@@ -126,16 +122,16 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         /// If there is no revision field remains empty
         /// </remarks>
         [JsonProperty(PropertyName = "Revised")]
-        public string Revised { get; set; }
+        public decimal? Revised { get; set; }
 
         /// <summary>
-        /// Country’s original name
+        /// Countryï¿½s original name
         /// </summary>
         [JsonProperty(PropertyName = "OCountry")]
         public string OCountry { get; set; }
 
         /// <summary>
-        /// Category’s original name
+        /// Categoryï¿½s original name
         /// </summary>
         [JsonProperty(PropertyName = "OCategory")]
         public string OCategory { get; set; }
@@ -150,7 +146,12 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         /// Unique symbol used by Trading Economics
         /// </summary>
         [JsonProperty(PropertyName = "Symbol")]
-        public string Symbol { get; set; }
+        public string TESymbol { get; set; }
+
+        /// <summary>
+        /// Indicates whether the Actual, Previous, Forecast, TradingEconomicsForecast fields are reported as percent values
+        /// </summary>
+        public bool IsPercentage { get; set; }
 
         /// <summary>
         /// Return the Subscription Data Source gained from the URL
@@ -161,14 +162,8 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         /// <returns>Subscription Data Source.</returns>
         public override SubscriptionDataSource GetSource(SubscriptionDataConfig config, DateTime date, bool isLiveMode)
         {
-            if (!config.Symbol.Value.EndsWith(".C"))
-            {
-                throw new ArgumentException($"TradingEconomicsCalendar.GetSource(): Invalid symbol {config.Symbol}");
-            }
-
-            var symbol = config.Symbol.Value.ToLower();
-            symbol = symbol.Substring(0, symbol.Length - 2);
-            var source = Path.Combine(Globals.DataFolder, "alternative", "trading-economics", "calendar", symbol, $"{date:yyyyMMdd}.zip");
+            var symbol = config.Symbol.Value.ToLowerInvariant();
+            var source = Path.Combine(Globals.DataFolder, "alternative", "trading-economics", "calendar", symbol, Invariant($"{date:yyyyMMdd}.zip"));
             return new SubscriptionDataSource(source, SubscriptionTransportMedium.LocalFile, FileFormat.Collection);
         }
 
@@ -180,7 +175,7 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         /// <param name="date">Date of the requested data</param>
         /// <param name="isLiveMode">true if we're in live mode, false for backtesting mode</param>
         /// <returns>
-        /// Collection of USEnergyInformation objects
+        /// Collection of TradingEconomicsCalendar objects
         /// </returns>
         public override BaseData Reader(SubscriptionDataConfig config, string content, DateTime date, bool isLiveMode)
         {
@@ -197,12 +192,56 @@ namespace QuantConnect.Data.Custom.TradingEconomics
         }
 
         /// <summary>
+        /// Clones the data. This is required for some custom data
+        /// </summary>
+        /// <returns>A new cloned instance</returns>
+        public override BaseData Clone()
+        {
+            return new TradingEconomicsCalendar
+            {
+                CalendarId = CalendarId,
+                EndTime = EndTime,
+                Country = Country,
+                Category = Category,
+                Event = Event,
+                Reference = Reference,
+                Source = Source,
+                Actual = Actual,
+                Previous = Previous,
+                Forecast = Forecast,
+                TradingEconomicsForecast = TradingEconomicsForecast,
+                DateSpan = DateSpan,
+                Importance = Importance,
+                LastUpdate = LastUpdate,
+                Revised = Revised,
+                OCountry = Country,
+                OCategory = OCategory,
+                Ticker = Ticker,
+                TESymbol = TESymbol,
+                IsPercentage = IsPercentage,
+
+
+                Symbol = Symbol,
+                Time = Time
+            };
+        }
+
+        /// <summary>
         /// Formats a string with the Trading Economics Calendar information.
         /// </summary>
         public override string ToString()
         {
-            var symbol = string.IsNullOrWhiteSpace(Symbol) ? Symbol : Ticker;
-            return $"{symbol} ({Country} - {Category}): {Event} : Importance.{Importance}";
+            var symbol = string.IsNullOrWhiteSpace(TESymbol) ? Ticker : TESymbol;
+            return Invariant($"{symbol} ({Country} - {Category}): {Event} : Importance.{Importance}");
+        }
+
+        /// <summary>
+        /// Specifies the data time zone for this data type. This is useful for custom data types
+        /// </summary>
+        /// <returns>The <see cref="DateTimeZone"/> of this data type</returns>
+        public override DateTimeZone DataTimeZone()
+        {
+            return TimeZones.Utc;
         }
     }
 

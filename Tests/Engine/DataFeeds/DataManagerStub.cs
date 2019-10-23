@@ -73,7 +73,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds
                 new SecurityService(algorithm.Portfolio.CashBook,
                     marketHoursDatabase,
                     symbolPropertiesDatabase,
-                    algorithm))
+                    algorithm,
+                    RegisteredSecurityDataTypesProvider.Null,
+                    new SecurityCacheProvider(algorithm.Portfolio)))
         {
         }
 
@@ -83,7 +85,8 @@ namespace QuantConnect.Tests.Engine.DataFeeds
                 algorithm,
                 timeKeeper,
                 marketHoursDatabase,
-                false)
+                false,
+                RegisteredSecurityDataTypesProvider.Null)
         {
             SecurityService = securityService;
             algorithm.Securities.SetSecurityService(securityService);

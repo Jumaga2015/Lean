@@ -64,7 +64,9 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
                 exchangeHours,
                 quoteCurrency,
                 SymbolProperties.GetDefault(Currencies.USD),
-                ErrorCurrencyConverter.Instance
+                ErrorCurrencyConverter.Instance,
+                RegisteredSecurityDataTypesProvider.Null,
+                new SecurityCache()
             );
 
             var universeSettings = new UniverseSettings(Resolution.Minute, 0, true, false, TimeSpan.Zero);
@@ -105,6 +107,8 @@ namespace QuantConnect.Tests.Engine.DataFeeds.Enumerators.Factories
             Assert.IsTrue(enumerator.MoveNext());
             Assert.IsNull(enumerator.Current);
             Assert.AreEqual(2, symbolUniverse.TotalLookupCalls);
+
+            enumerator.Dispose();
         }
 
         public class TestDataQueueUniverseProvider : IDataQueueUniverseProvider
