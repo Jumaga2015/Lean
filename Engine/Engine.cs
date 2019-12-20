@@ -128,6 +128,12 @@ namespace QuantConnect.Lean.Engine
                     // initialize the alphas handler with the algorithm instance
                     AlgorithmHandlers.Alphas.Initialize(job, algorithm, SystemHandlers.Notify, SystemHandlers.Api);
 
+                    // initialize the object store
+                    AlgorithmHandlers.ObjectStore.Initialize(algorithm.Name, job.UserId, job.ProjectId, job.UserToken, job.Controls);
+
+                    // notify the user of any errors w/ object store persistence
+                    AlgorithmHandlers.ObjectStore.ErrorRaised += (sender, args) => algorithm.Debug($"ObjectStore Persistence Error: {args.Error.Message}");
+
                     // Initialize the brokerage
                     IBrokerageFactory factory;
                     brokerage = AlgorithmHandlers.Setup.CreateBrokerage(job, algorithm, out factory);
@@ -198,7 +204,9 @@ namespace QuantConnect.Lean.Engine
                                     AlgorithmHandlers.Results.SendStatusUpdate(AlgorithmStatus.History,
                                         Invariant($"Processing history {progress}%..."));
                                 }
-                            }
+                            },
+                            // disable parallel history requests for live trading
+                            parallelHistoryRequestsEnabled: !_liveMode
                         )
                     );
 
@@ -213,7 +221,7 @@ namespace QuantConnect.Lean.Engine
                     algorithm.BrokerageMessageHandler = factory.CreateBrokerageMessageHandler(algorithm, job, SystemHandlers.Api);
 
                     //Initialize the internal state of algorithm and job: executes the algorithm.Initialize() method.
-                    initializeComplete = AlgorithmHandlers.Setup.Setup(new SetupHandlerParameters(dataManager.UniverseSelection, algorithm, brokerage, job, AlgorithmHandlers.Results, AlgorithmHandlers.Transactions, AlgorithmHandlers.RealTime));
+                    initializeComplete = AlgorithmHandlers.Setup.Setup(new SetupHandlerParameters(dataManager.UniverseSelection, algorithm, brokerage, job, AlgorithmHandlers.Results, AlgorithmHandlers.Transactions, AlgorithmHandlers.RealTime, AlgorithmHandlers.ObjectStore));
 
                     // set this again now that we've actually added securities
                     AlgorithmHandlers.Results.SetAlgorithm(algorithm, AlgorithmHandlers.Setup.StartingPortfolioValue);
@@ -259,6 +267,7 @@ namespace QuantConnect.Lean.Engine
                 Log.Trace("         Results:      " + AlgorithmHandlers.Results.GetType().FullName);
                 Log.Trace("         Transactions: " + AlgorithmHandlers.Transactions.GetType().FullName);
                 Log.Trace("         Alpha:        " + AlgorithmHandlers.Alphas.GetType().FullName);
+                Log.Trace("         ObjectStore:  " + AlgorithmHandlers.ObjectStore.GetType().FullName);
                 if (algorithm?.HistoryProvider != null)
                 {
                     Log.Trace("         History Provider:     " + algorithm.HistoryProvider.GetType().FullName);
@@ -486,7 +495,15 @@ namespace QuantConnect.Lean.Engine
             {
                 historyProvider = Config.Get("history-provider", "SubscriptionDataReaderHistoryProvider");
             }
-            return Composer.Instance.GetExportedValueByTypeName<IHistoryProvider>(historyProvider);
+            var provider = Composer.Instance.GetExportedValueByTypeName<IHistoryProvider>(historyProvider);
+
+            provider.InvalidConfigurationDetected += (sender, args) => { AlgorithmHandlers.Results.ErrorMessage(args.Message); };
+            provider.NumericalPrecisionLimited += (sender, args) => { AlgorithmHandlers.Results.DebugMessage(args.Message); };
+            provider.StartDateLimited += (sender, args) => { AlgorithmHandlers.Results.DebugMessage(args.Message); };
+            provider.DownloadFailed += (sender, args) => { AlgorithmHandlers.Results.ErrorMessage(args.Message, args.StackTrace); };
+            provider.ReaderErrorDetected += (sender, args) => { AlgorithmHandlers.Results.RuntimeError(args.Message, args.StackTrace); };
+
+            return provider;
         }
 
         /// <summary>

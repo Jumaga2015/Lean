@@ -116,6 +116,7 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
     <Prefer32Bit>false</Prefer32Bit>
     <CodeAnalysisRuleSet>..\QuantConnect.ruleset</CodeAnalysisRuleSet>
+    <DocumentationFile>bin\Release\QuantConnect.Lean.Engine.xml</DocumentationFile>
   </PropertyGroup>
   <Target Name="Print" BeforeTargets="Build">
     <Message Text="SelectedOptimization $(SelectedOptimization)" Importance="high" />
@@ -172,6 +173,8 @@
     <Compile Include="DataFeeds\CachingFutureChainProvider.cs" />
     <Compile Include="DataFeeds\CachingOptionChainProvider.cs" />
     <Compile Include="DataFeeds\CurrencySubscriptionDataConfigManager.cs" />
+    <Compile Include="DataFeeds\DataChannelProvider.cs" />
+    <Compile Include="DataFeeds\IDataChannelProvider.cs" />
     <Compile Include="DataFeeds\IndexSubscriptionDataSourceReader.cs" />
     <Compile Include="DataFeeds\DataManager.cs" />
     <Compile Include="DataFeeds\Enumerators\DelistingEventProvider.cs" />
@@ -199,7 +202,6 @@
     <Compile Include="DataFeeds\PendingRemovalsManager.cs" />
     <Compile Include="DataFeeds\RealTimeScheduleEventService.cs" />
     <Compile Include="DataFeeds\PredicateTimeProvider.cs" />
-    <Compile Include="DataFeeds\SubscriptionDataReaderEvents.cs" />
     <Compile Include="DataFeeds\SubscriptionFrontierTimeProvider.cs" />
     <Compile Include="DataFeeds\SingleEntryDataCacheProvider.cs" />
     <Compile Include="DataFeeds\Enumerators\BaseDataCollectionAggregatorEnumerator.cs" />
@@ -235,6 +237,7 @@
     <Compile Include="DataFeeds\SubscriptionCollection.cs" />
     <Compile Include="DataFeeds\SubscriptionData.cs" />
     <Compile Include="DataFeeds\LiveSynchronizer.cs" />
+    <Compile Include="DataFeeds\SubscriptionUtils.cs" />
     <Compile Include="DataFeeds\Synchronizer.cs" />
     <Compile Include="DataFeeds\TextSubscriptionDataSourceReader.cs" />
     <Compile Include="DataFeeds\CreateStreamReaderErrorEventArgs.cs" />
@@ -288,6 +291,7 @@
     <Compile Include="Alphas\DefaultAlphaHandler.cs" />
     <Compile Include="Alphas\IAlphaHandler.cs" />
     <Compile Include="Setup\SetupHandlerParameters.cs" />
+    <Compile Include="Storage\LocalObjectStore.cs" />
     <Compile Include="TransactionHandlers\BacktestingTransactionHandler.cs" />
     <Compile Include="TransactionHandlers\BrokerageTransactionHandler.cs" />
     <Compile Include="TransactionHandlers\CancelPendingOrders.cs" />
