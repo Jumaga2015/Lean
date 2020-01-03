@@ -147,7 +147,8 @@ namespace QuantConnect.Lean.Engine.Storage
                 fileCount++;
                 if (string.Equals(kvp.Key, key))
                 {
-                    expectedStorageSizeBytes += contents.Length - kvp.Value.Length;
+                    // we use the New content size
+                    expectedStorageSizeBytes += contents.Length;
                 }
                 else
                 {
@@ -296,6 +297,7 @@ namespace QuantConnect.Lean.Engine.Storage
         /// Overridable persistence function
         /// </summary>
         /// <param name="data">The data to be persisted</param>
+        /// <returns>True if persistence was successful, otherwise false</returns>
         protected virtual bool PersistData(IEnumerable<KeyValuePair<string, byte[]>> data)
         {
             try

@@ -30,14 +30,14 @@ namespace QuantConnect.Tests.Common.Storage
         private static readonly string TestStorageRoot = $"./{nameof(LocalObjectStoreTests)}";
         private static readonly string StorageRootConfigurationValue = Config.Get("object-store-root");
 
-        private LocalObjectStore _store;
+        private ObjectStore _store;
 
         [TestFixtureSetUp]
         public void Setup()
         {
             Config.Set("object-store-root", TestStorageRoot);
 
-            _store = new LocalObjectStore();
+            _store = new ObjectStore(new LocalObjectStore());
             _store.Initialize("CSharp-TestAlgorithm", 0, 0, "", new Controls());
         }
 
@@ -83,6 +83,20 @@ namespace QuantConnect.Tests.Common.Storage
             var actualText = _store.Read("my_settings_text");
 
             Assert.AreEqual(expectedText, actualText);
+        }
+
+        [Test]
+        public void SizeLimitIsRespected()
+        {
+            {
+                var validData = new byte[1024 * 1024 * 4];
+                Assert.IsTrue(_store.SaveBytes("my_settings_text", validData));
+            }
+            {
+                var invalidData = new byte[1024 * 1024 * 6];
+                Assert.IsFalse(_store.SaveBytes("my_settings_text", invalidData));
+            }
+            _store.Delete("my_settings_text");
         }
 
         [Test]
