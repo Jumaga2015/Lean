@@ -41,7 +41,7 @@ namespace QuantConnect.Algorithm.CSharp
             SetBrokerageModel(BrokerageName.GDAX, AccountType.Cash);
 
             SetTimeZone(NodaTime.DateTimeZone.Utc);
-            var security = AddSecurity(SecurityType.Crypto, "BTCUSD", Resolution.Daily, Market.GDAX, false, 3.3m, true);
+            var security = AddSecurity(SecurityType.Crypto, "BTCUSD", Resolution.Daily, Market.GDAX, false, 1, true);
 
             // The default buying power model for the Crypto security type is now CashBuyingPowerModel.
             // Since this test algorithm uses leverage we need to set a buying power model with margin.
@@ -136,7 +136,8 @@ namespace QuantConnect.Algorithm.CSharp
             {"Mean Population Direction", "60%"},
             {"Mean Population Magnitude", "0%"},
             {"Rolling Averaged Population Direction", "50.9901%"},
-            {"Rolling Averaged Population Magnitude", "0%"}
+            {"Rolling Averaged Population Magnitude", "0%"},
+            {"OrderListHash", "-746218858"}
         };
     }
 }

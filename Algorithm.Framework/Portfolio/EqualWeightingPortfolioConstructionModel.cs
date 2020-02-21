@@ -16,8 +16,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Python.Runtime;
 using QuantConnect.Algorithm.Framework.Alphas;
-using QuantConnect.Data.UniverseSelection;
+using QuantConnect.Scheduling;
 
 namespace QuantConnect.Algorithm.Framework.Portfolio
 {
@@ -29,19 +30,51 @@ namespace QuantConnect.Algorithm.Framework.Portfolio
     /// </summary>
     public class EqualWeightingPortfolioConstructionModel : PortfolioConstructionModel
     {
-        private readonly Func<DateTime, DateTime> _rebalancingFunc;
-        private DateTime _rebalancingTime;
-        private List<Symbol> _removedSymbols;
-        private readonly InsightCollection _insightCollection = new InsightCollection();
-        private DateTime? _nextExpiryTime;
+        /// <summary>
+        /// Initialize a new instance of <see cref="EqualWeightingPortfolioConstructionModel"/>
+        /// </summary>
+        /// <param name="rebalancingDateRules">The date rules used to define the next expected rebalance time
+        /// in UTC</param>
+        public EqualWeightingPortfolioConstructionModel(IDateRule rebalancingDateRules)
+            : this(rebalancingDateRules.ToFunc())
+        {
+        }
 
         /// <summary>
         /// Initialize a new instance of <see cref="EqualWeightingPortfolioConstructionModel"/>
         /// </summary>
-        /// <param name="rebalancingFunc">For a given algorithm UTC DateTime returns the next expected rebalance time</param>
-        public EqualWeightingPortfolioConstructionModel(Func<DateTime, DateTime> rebalancingFunc)
+        /// <param name="rebalancingFunc">For a given algorithm UTC DateTime returns the next expected rebalance time
+        /// or null if unknown, in which case the function will be called again in the next loop. Returning current time
+        /// will trigger rebalance. If null will be ignored</param>
+        public EqualWeightingPortfolioConstructionModel(Func<DateTime, DateTime?> rebalancingFunc)
+            : base(rebalancingFunc)
         {
-            _rebalancingFunc = rebalancingFunc;
+        }
+
+        /// <summary>
+        /// Initialize a new instance of <see cref="EqualWeightingPortfolioConstructionModel"/>
+        /// </summary>
+        /// <param name="rebalancingFunc">For a given algorithm UTC DateTime returns the next expected rebalance UTC time.
+        /// Returning current time will trigger rebalance. If null will be ignored</param>
+        public EqualWeightingPortfolioConstructionModel(Func<DateTime, DateTime> rebalancingFunc)
+            : this(rebalancingFunc != null ? (Func<DateTime, DateTime?>)(timeUtc => rebalancingFunc(timeUtc)) : null)
+        {
+        }
+
+        /// <summary>
+        /// Initialize a new instance of <see cref="EqualWeightingPortfolioConstructionModel"/>
+        /// </summary>
+        /// <param name="rebalancingParam">Rebalancing func or if a date rule, timedelta will be converted into func.
+        /// For a given algorithm UTC DateTime the func returns the next expected rebalance time
+        /// or null if unknown, in which case the function will be called again in the next loop. Returning current time
+        /// will trigger rebalance. If null will be ignored</param>
+        /// <remarks>This is required since python net can not convert python methods into func nor resolve the correct
+        /// constructor for the date rules parameter.
+        /// For performance we prefer python algorithms using the C# implementation</remarks>
+        public EqualWeightingPortfolioConstructionModel(PyObject rebalancingParam)
+            : this((Func<DateTime, DateTime?>)null)
+        {
+            SetRebalancingFunc(rebalancingParam);
         }
 
         /// <summary>
@@ -63,22 +96,11 @@ namespace QuantConnect.Algorithm.Framework.Portfolio
         }
 
         /// <summary>
-        /// Method that will determine if the portfolio construction model should create a
-        /// target for this insight
-        /// </summary>
-        /// <param name="insight">The insight to create a target for</param>
-        /// <returns>True if the portfolio should create a target for the insight</returns>
-        public virtual bool ShouldCreateTargetForInsight(Insight insight)
-        {
-            return true;
-        }
-
-        /// <summary>
         /// Will determine the target percent for each insight
         /// </summary>
         /// <param name="activeInsights">The active insights to generate a target for</param>
         /// <returns>A target percent for each insight</returns>
-        public virtual Dictionary<Insight, double> DetermineTargetPercent(ICollection<Insight> activeInsights)
+        protected override Dictionary<Insight, double> DetermineTargetPercent(List<Insight> activeInsights)
         {
             var result = new Dictionary<Insight, double>();
 
@@ -90,89 +112,6 @@ namespace QuantConnect.Algorithm.Framework.Portfolio
                 result[insight] = (double)((int)insight.Direction * percent);
             }
             return result;
-        }
-
-        /// <summary>
-        /// Create portfolio targets from the specified insights
-        /// </summary>
-        /// <param name="algorithm">The algorithm instance</param>
-        /// <param name="insights">The insights to create portfolio targets from</param>
-        /// <returns>An enumerable of portfolio targets to be sent to the execution model</returns>
-        public override IEnumerable<IPortfolioTarget> CreateTargets(QCAlgorithm algorithm, Insight[] insights)
-        {
-            var targets = new List<IPortfolioTarget>();
-
-            if (algorithm.UtcTime <= _nextExpiryTime &&
-                algorithm.UtcTime <= _rebalancingTime &&
-                insights.Length == 0 &&
-                _removedSymbols == null)
-            {
-                return targets;
-            }
-
-            // Validate we should create a target for this insight
-            _insightCollection.AddRange(insights.Where(ShouldCreateTargetForInsight));
-
-            // Create flatten target for each security that was removed from the universe
-            if (_removedSymbols != null)
-            {
-                var universeDeselectionTargets = _removedSymbols.Select(symbol => new PortfolioTarget(symbol, 0));
-                targets.AddRange(universeDeselectionTargets);
-                _removedSymbols = null;
-            }
-
-            // Get insight that haven't expired of each symbol that is still in the universe
-            var activeInsights = _insightCollection.GetActiveInsights(algorithm.UtcTime);
-
-            // Get the last generated active insight for each symbol
-            var lastActiveInsights = (from insight in activeInsights
-                                      group insight by insight.Symbol into g
-                                      select g.OrderBy(x => x.GeneratedTimeUtc).Last()).ToList();
-
-            var errorSymbols = new HashSet<Symbol>();
-
-            // Determine target percent for the given insights
-            var percents = DetermineTargetPercent(lastActiveInsights);
-
-            foreach (var insight in lastActiveInsights)
-            {
-                var target = PortfolioTarget.Percent(algorithm, insight.Symbol, percents[insight]);
-                if (target != null)
-                {
-                    targets.Add(target);
-                }
-                else
-                {
-                    errorSymbols.Add(insight.Symbol);
-                }
-            }
-
-            // Get expired insights and create flatten targets for each symbol
-            var expiredInsights = _insightCollection.RemoveExpiredInsights(algorithm.UtcTime);
-
-            var expiredTargets = from insight in expiredInsights
-                                 group insight.Symbol by insight.Symbol into g
-                                 where !_insightCollection.HasActiveInsights(g.Key, algorithm.UtcTime) && !errorSymbols.Contains(g.Key)
-                                 select new PortfolioTarget(g.Key, 0);
-
-            targets.AddRange(expiredTargets);
-
-            _nextExpiryTime = _insightCollection.GetNextExpiryTime();
-            _rebalancingTime = _rebalancingFunc(algorithm.UtcTime);
-
-            return targets;
-        }
-
-        /// <summary>
-        /// Event fired each time the we add/remove securities from the data feed
-        /// </summary>
-        /// <param name="algorithm">The algorithm instance that experienced the change in securities</param>
-        /// <param name="changes">The security additions and removals from the algorithm</param>
-        public override void OnSecuritiesChanged(QCAlgorithm algorithm, SecurityChanges changes)
-        {
-            // Get removed symbol and invalidate them in the insight collection
-            _removedSymbols = changes.RemovedSecurities.Select(x => x.Symbol).ToList();
-            _insightCollection.Clear(_removedSymbols.ToArray());
         }
     }
 }

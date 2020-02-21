@@ -17,12 +17,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using NodaTime;
 using NUnit.Framework;
 using Python.Runtime;
 using QuantConnect.Data.Market;
 using QuantConnect.Data.UniverseSelection;
 using QuantConnect.Indicators;
 using QuantConnect.Orders;
+using QuantConnect.Scheduling;
 using QuantConnect.Securities;
 
 namespace QuantConnect.Tests.Common.Util
@@ -380,6 +382,41 @@ namespace QuantConnect.Tests.Common.Util
             const string input = "12345678900.12";
             var value = input.ToInt64();
             Assert.AreEqual(12345678900, value);
+        }
+
+        [Test]
+        public void ToCsvDataParsesCorrectly()
+        {
+            var csv = "\"hello\",\"world\"".ToCsvData();
+            Assert.AreEqual(2, csv.Count);
+            Assert.AreEqual("\"hello\"", csv[0]);
+            Assert.AreEqual("\"world\"", csv[1]);
+
+            var csv2 = "1,2,3,4".ToCsvData();
+            Assert.AreEqual(4, csv2.Count);
+            Assert.AreEqual("1", csv2[0]);
+            Assert.AreEqual("2", csv2[1]);
+            Assert.AreEqual("3", csv2[2]);
+            Assert.AreEqual("4", csv2[3]);
+        }
+
+        [Test]
+        public void ToCsvDataParsesEmptyFinalValue()
+        {
+            var line = "\"hello\",world,";
+            var csv = line.ToCsvData();
+
+            Assert.AreEqual(3, csv.Count);
+            Assert.AreEqual("\"hello\"", csv[0]);
+            Assert.AreEqual("hello", csv[0].Trim('"'));
+            Assert.AreEqual("world", csv[1]);
+            Assert.AreEqual(string.Empty, csv[2]);
+        }
+
+        [Test]
+        public void ToCsvDataParsesEmptyValue()
+        {
+            Assert.AreEqual(string.Empty, string.Empty.ToCsvData()[0]);
         }
 
         [Test]
@@ -983,6 +1020,23 @@ actualDictionary.update({'IBM': 5})
 
             value = decimal.MinValue + 1;
             Assert.DoesNotThrow(() => value.TruncateTo3DecimalPlaces());
+        }
+
+        [Test]
+        public void DateRulesToFunc()
+        {
+            var dateRules = new DateRules(new SecurityManager(
+                new TimeKeeper(new DateTime(2015, 1, 1), DateTimeZone.Utc)), DateTimeZone.Utc);
+            var first = new DateTime(2015, 1, 10);
+            var second = new DateTime(2015, 1, 30);
+            var dateRule = dateRules.On(first, second);
+            var func = dateRule.ToFunc();
+
+            Assert.AreEqual(first, func(new DateTime(2015, 1, 1)));
+            Assert.AreEqual(first, func(new DateTime(2015, 1, 5)));
+            Assert.AreEqual(second, func(first));
+            Assert.AreEqual(Time.EndOfTime, func(second));
+            Assert.AreEqual(Time.EndOfTime, func(second));
         }
 
         private PyObject ConvertToPyObject(object value)
