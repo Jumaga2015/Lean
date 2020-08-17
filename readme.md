@@ -20,6 +20,8 @@ Join the team and solve some of the most difficult challenges in quantitative fi
 
 - [**Senior UX Developer**](mailto:jared@quantconnect.com): Collaborate with QuantConnect to develop a world leading online experience for a community of developers from all over the world. 
 
+- [**Technical Writers**](mailto:jared@quantconnect.com): Help us improve the QuantConnect and LEAN documentation with hands on tutorials with how to use all the adaptors LEAN offers, and how to setup trading locally. 
+
 - [**Quantitative Development Intern**](mailto:jared@quantconnect.com): If you are a recent or current graduate with a knack for quantitative finance, consider applying for an internship!
 
 ## System Overview ##
@@ -50,6 +52,12 @@ These are all configurable from the config.json file in the Launcher Project.
 ## Installation Instructions ##
 
 *We recommend using the docker image.* This is perfectly configured to run out of the box without interfering with your development environment. You can pull this image with `docker pull quantconnect/lean`
+
+Refer to the following readme files for a detailed guide regarding using our docker image with your local IDE:
+* [VS Code](.vscode/readme.md)
+* [VS](.vs/readme.md)
+* [Pycharm](.idea/readme.md)
+  
 
 To install locally, download the zip file with the [latest master](https://github.com/QuantConnect/Lean/archive/master.zip) and unzip it to your favorite location. Alternatively, install [Git](https://git-scm.com/downloads) and clone the repo:
 

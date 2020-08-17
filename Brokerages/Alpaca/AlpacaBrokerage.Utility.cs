@@ -146,12 +146,19 @@ namespace QuantConnect.Brokerages.Alpaca
                         FillQuantity = fillQuantity * (order.Direction == OrderDirection.Buy ? 1 : -1)
                     });
                 }
-                else if (trade.Event == TradeEvent.Canceled)
+                else if (trade.Event == TradeEvent.Rejected)
+                {
+                    OnOrderEvent(new OrderEvent(order,
+                            DateTime.UtcNow,
+                            OrderFee.Zero,
+                            "Alpaca Rejected Order Event") { Status = OrderStatus.Invalid });
+                }
+                else if (trade.Event == TradeEvent.Canceled || trade.Event == TradeEvent.Expired)
                 {
                     OnOrderEvent(new OrderEvent(order,
                         DateTime.UtcNow,
                         OrderFee.Zero,
-                        "Alpaca Cancel Order Event") { Status = OrderStatus.Canceled });
+                        $"Alpaca {trade.Event} Order Event") { Status = OrderStatus.Canceled });
                 }
                 else if (trade.Event == TradeEvent.OrderCancelRejected)
                 {
@@ -167,12 +174,12 @@ namespace QuantConnect.Brokerages.Alpaca
 
         private static void OnPolygonStreamingClientError(Exception exception)
         {
-            Log.Error(exception, $"PolygonStreamingClient error");
+            Log.Error($"PolygonStreamingClient error: {exception.Message}");
         }
 
         private static void OnSockClientError(Exception exception)
         {
-            Log.Error(exception, "SockClient error");
+            Log.Error($"SockClient error: {exception.Message}");
         }
 
         /// <summary>
