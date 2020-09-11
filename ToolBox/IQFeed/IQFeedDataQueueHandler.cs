@@ -50,7 +50,8 @@ namespace QuantConnect.ToolBox.IQFeed
         private Level1Port _level1Port;
         private HistoryPort _historyPort;
 
-        private readonly IDataAggregator _aggregator;
+        private readonly IDataAggregator _aggregator = Composer.Instance.GetExportedValueByTypeName<IDataAggregator>(
+            Config.Get("data-aggregator", "QuantConnect.Lean.Engine.DataFeeds.AggregationManager"));
 
         /// <summary>
         /// Gets the total number of data points emitted by this history provider
@@ -60,11 +61,10 @@ namespace QuantConnect.ToolBox.IQFeed
         /// <summary>
         /// IQFeedDataQueueHandler is an implementation of IDataQueueHandler:
         /// </summary>
-        public IQFeedDataQueueHandler(IDataAggregator aggregator)
+        public IQFeedDataQueueHandler()
         {
             _symbols = new HashSet<Symbol>();
             _underlyings = new Dictionary<Symbol, Symbol>();
-            _aggregator = aggregator;
 
             if (!IsConnected) Connect();
         }
@@ -231,11 +231,15 @@ namespace QuantConnect.ToolBox.IQFeed
         {
             try
             {
-                //Launch the IQ Feed Application:
+                // Launch the IQ Feed Application:
                 Log.Trace("IQFeed.Connect(): Launching client...");
 
-                var connector = new IQConnect(Config.Get("iqfeed-productName"), "1.0");
-                connector.Launch();
+                if (OS.IsWindows)
+                {
+                    // IQConnect is only supported on Windows
+                    var connector = new IQConnect(Config.Get("iqfeed-productName"), "1.0");
+                    connector.Launch();
+                }
 
                 // Initialise one admin port
                 Log.Trace("IQFeed.Connect(): Connecting to admin...");
@@ -599,22 +603,6 @@ namespace QuantConnect.ToolBox.IQFeed
         }
 
         /// <summary>
-        /// Returns true if this data provide can handle the specified symbol
-        /// </summary>
-        /// <param name="symbol">The symbol to be handled</param>
-        /// <returns>True if this data provider can get data for the symbol, false otherwise</returns>
-        private bool CanHandle(Symbol symbol)
-        {
-            var market = symbol.ID.Market;
-            var securityType = symbol.ID.SecurityType;
-            return
-                (securityType == SecurityType.Equity && market == Market.USA) ||
-                (securityType == SecurityType.Forex && market == Market.FXCM) ||
-                (securityType == SecurityType.Option && market == Market.USA) ||
-                (securityType == SecurityType.Future && IQFeedDataQueueUniverseProvider.FuturesExchanges.Values.Contains(market));
-        }
-
-        /// <summary>
         /// Populate request data
         /// </summary>
         public IEnumerable<Slice> ProcessHistoryRequests(HistoryRequest request)
@@ -686,6 +674,22 @@ namespace QuantConnect.ToolBox.IQFeed
         }
 
         /// <summary>
+        /// Returns true if this data provide can handle the specified symbol
+        /// </summary>
+        /// <param name="symbol">The symbol to be handled</param>
+        /// <returns>True if this data provider can get data for the symbol, false otherwise</returns>
+        private bool CanHandle(Symbol symbol)
+        {
+            var market = symbol.ID.Market;
+            var securityType = symbol.ID.SecurityType;
+            return
+                (securityType == SecurityType.Equity && market == Market.USA) ||
+                (securityType == SecurityType.Forex && market == Market.FXCM) ||
+                (securityType == SecurityType.Option && market == Market.USA) ||
+                (securityType == SecurityType.Future && IQFeedDataQueueUniverseProvider.FuturesExchanges.Values.Contains(market));
+        }
+
+        /// <summary>
         /// Created new request ID for a given lookup type (tick, intraday bar, daily bar)
         /// </summary>
         /// <param name="lookupType">Lookup type: REQ_HST_TCK (tick), REQ_HST_DWM (daily) or REQ_HST_INT (intraday resolutions)</param>
@@ -695,7 +699,6 @@ namespace QuantConnect.ToolBox.IQFeed
         {
             return lookupType + id.ToStringInvariant("0000000");
         }
-
 
         /// <summary>
         /// Method called when a new Lookup event is fired
