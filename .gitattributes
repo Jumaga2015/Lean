@@ -64,3 +64,5 @@
 
 #these files are used in linux, so use just LF
 *.sh lf
+
+.rooignore merge=ours
